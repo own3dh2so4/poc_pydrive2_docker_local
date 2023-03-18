@@ -1,0 +1,44 @@
+#!/bin/bash
+
+FILE_LOGS="/tmp/nc_output"
+CONTAINER_PORT="8080"
+CONTAINER_NAME="nc_docker"
+CLIENT_ID="<your-google-client-id>.apps.googleusercontent.com"
+REDIRECT_URI="http://localhost:8080/"
+
+URL_TO_OPEN="https://accounts.google.com/o/oauth2/auth/oauthchooseaccount?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive&access_type=online&response_type=code&service=lso&o2v=1&flowName=GeneralOAuthFlow"
+
+if [ -f $FILE_LOGS ]; then
+    rm -rf $FILE_LOGS
+fi
+
+docker stop ${CONTAINER_NAME} > /dev/null 2>&1
+
+docker run \
+  -p ${CONTAINER_PORT}:${CONTAINER_PORT} \
+  --name ${CONTAINER_NAME} \
+  -v "/tmp:/tmp" \
+  --user ${UID}:${GID} \
+  -d --rm \
+  alpine \
+  /bin/sh -c "nc -l -p ${CONTAINER_PORT} > ${FILE_LOGS}" > /dev/null 2>&1
+
+if which xdg-open > /dev/null 2>&1; then
+    (xdg-open ${URL_TO_OPEN} >/dev/null 2>/dev/null) &
+fi
+if which open > /dev/null 2>&1; then
+    (open ${URL_TO_OPEN} >/dev/null 2>/dev/null) &
+fi
+
+c=100000
+while [ $c -gt 0 ]; do
+    grep "?code=" ${FILE_LOGS} > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+      break
+      exit
+    fi
+    sleep 0.1
+    c=$(( c - 1 ))
+done
+
+docker stop ${CONTAINER_NAME} > /dev/null 2>&1

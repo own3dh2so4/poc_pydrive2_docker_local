@@ -1,0 +1,9 @@
+#!/bin/bash
+
+`dirname $0`/local_nc &
+
+docker run \
+  -v "/tmp:/tmp" \
+  --user ${UID}:${GID} \
+  -it --rm \
+  own3dh2so4/test_pydrive2:latest
